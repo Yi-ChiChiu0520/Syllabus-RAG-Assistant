@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.env
+.venv/
+env/
+*.egg-info/
+.idea/
+.DS_Store
+
+# Data directories - exclude from git
+data/
+syllabi_data/
+chroma_db/
+syllabus_chroma_db/
+
+# Document files - exclude uploaded content
+*.pdf
+*.docx
+*.doc
+
+# ChromaDB files
+*.chroma
+chroma.sqlite3
+
+# Model cache (optional - these can be large)
+.cache/
+models/
+
+# Logs
+*.log
+logs/
