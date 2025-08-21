@@ -11,7 +11,6 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 from collections import Counter
 import tempfile
-import shutil
 from dotenv import load_dotenv
 from openai import OpenAI
 from ollama import Client
