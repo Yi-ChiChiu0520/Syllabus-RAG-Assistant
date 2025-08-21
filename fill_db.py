@@ -40,7 +40,7 @@ except Exception as e:
     print(f"NLTK download warning (may still work normally): {e}")
 
 # Set data path and ChromaDB path
-DATA_PATH = r"data"
+DATA_PATH = r"data-2"
 CHROMA_PATH = r"chroma_db"
 
 # Create ChromaDB persistent client
@@ -63,7 +63,7 @@ embedding_function = MyEmbeddingFunction()
 
 # Get or create ChromaDB collection
 collection = chroma_client.get_or_create_collection(
-    name="my-collection-original",
+    name="my-collection-2",
     embedding_function=embedding_function
 )
 
