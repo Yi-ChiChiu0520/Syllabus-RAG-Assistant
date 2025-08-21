@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body { height: 100%; }
+body { @apply bg-neutral-950 text-white antialiased; }
+
+
+/* Simple card + button primitives */
+.card {
+  /* Replace custom tokens with built-ins */
+  @apply bg-neutral-900 border border-zinc-800/60 rounded-2xl shadow-lg;
+}
+.card-header {
+  @apply px-4 py-3 border-b border-zinc-800/60;
+}
+.card-body {
+  @apply p-4;
+}
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-medium
+         border border-zinc-800/60 bg-zinc-900 hover:bg-zinc-800/70 transition;
+}
+.btn-primary {
+  @apply bg-emerald-600 hover:bg-emerald-500 border-emerald-600 text-white;
+}
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]
+         bg-zinc-900 border border-zinc-800/60 text-zinc-300;
+}
+.input {
+  @apply w-full rounded-xl bg-zinc-900 border border-zinc-800/60 px-3 py-2 text-sm
+         placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-600/60;
+}
+.select {
+  @apply w-full rounded-xl bg-zinc-900 border border-zinc-800/60 px-3 py-2 text-sm
+         focus:outline-none focus:ring-2 focus:ring-emerald-600/60;
+}

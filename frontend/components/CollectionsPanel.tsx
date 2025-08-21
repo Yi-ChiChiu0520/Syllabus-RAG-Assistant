@@ -1,104 +1,121 @@
 "use client";
-import useSWR from "swr";
-import { deleteCollection, listCollections } from "@/lib/api";
-import { useEffect, useState } from "react";
-import { sanitizeCollectionNameFrontend } from "@/utils/sanitize";
-import Uploader from "./Uploader";
+import { useEffect, useMemo, useState } from "react";
+import { Database, RefreshCw, Upload, Trash2 } from "lucide-react";
 
-const fetcher = async () => await listCollections();
+type Collection = { name: string; document_count: number; source_files?: Record<string, number> };
 
 export default function CollectionsPanel({
-  selected,
-  onSelect,
-  onRefresh
-}: {
-  selected: string | null;
-  onSelect: (name: string) => void;
-  onRefresh: () => void;
-}) {
-  const { data, error, isLoading, mutate } = useSWR("collections", fetcher, { refreshInterval: 30_000 });
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  activeCollection, onActiveChange,
+}: { activeCollection: string | null; onActiveChange: (v: string) => void; }) {
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [files, setFiles] = useState<FileList | null>(null);
+  const [uploadMode, setUploadMode] = useState<"existing" | "new">("existing");
+  const [newName, setNewName] = useState("my-syllabus-collection");
+  const names = useMemo(() => collections.map((c) => c.name), [collections]);
 
+  const refresh = () =>
+    fetch("/api/collections").then(r => r.json()).then(setCollections).catch(() => setCollections([]));
+
+  useEffect(() => { refresh(); }, []);
   useEffect(() => {
-    if (data && data.length && !selected) onSelect(data[0].name);
-  }, [data, selected, onSelect]);
+    if (!activeCollection && collections[0]) onActiveChange(collections[0].name);
+  }, [collections]);
 
-  if (error) return <div className="text-red-600">Failed to load collections</div>;
+  const selected = activeCollection ?? (collections[0]?.name ?? "");
 
-  const names = (data || []).map(c => c.name);
-  const selectedData = (data || []).find(c => c.name === selected);
+  const upload = async () => {
+    if (!files || files.length === 0) return;
+    const destination = uploadMode === "existing" ? selected : sanitize(newName);
+    const form = new FormData();
+    Array.from(files).forEach((f) => form.append("files", f, f.name));
+    const r = await fetch(`/api/upload/${destination}`, { method: "POST", body: form });
+    if (r.ok) {
+      await refresh();
+      onActiveChange(destination);
+      setFiles(null);
+      alert("Upload finished.");
+    } else {
+      alert("Upload failed.");
+    }
+  };
+
+  const remove = async () => {
+    if (!selected) return;
+    if (!confirm(`Delete collection '${selected}'? This cannot be undone.`)) return;
+    const r = await fetch(`/api/collections/${selected}`, { method: "DELETE" });
+    if (r.ok) {
+      await refresh();
+      onActiveChange(collections.filter(c => c.name !== selected)[0]?.name ?? "");
+    } else {
+      alert("Delete failed.");
+    }
+  };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">📂 Collection Management</h2>
-
-      {isLoading && <div className="text-sm">Loading collections…</div>}
-      {!isLoading && !data?.length && (
-        <div className="text-sm">⚠️ No collections found. Upload files to create one.</div>
-      )}
-
-      {data?.length ? (
-        <>
-          <div className="space-y-2">
-            <label className="text-sm">Select Active Collection</label>
+    <div className="card">
+      <div className="card-header flex items-center gap-2"><Database size={16}/> Collection Management</div>
+      <div className="card-body space-y-4">
+        {names.length ? (
+          <>
+            <label className="text-xs uppercase text-muted">Select Active Collection</label>
             <select
-              className="border rounded px-2 py-1 w-full"
-              value={selected || ""}
-              onChange={e => onSelect(e.target.value)}
+              className="select"
+              value={selected}
+              onChange={(e) => onActiveChange(e.target.value)}
             >
-              {names.map(n => <option key={n} value={n}>{n}</option>)}
+              {names.map((n) => <option key={n}>{n}</option>)}
             </select>
-            <div className="text-sm">Active Collection: <code>{selected}</code></div>
-            {selectedData && (
-              <div className="text-sm bg-gray-50 border rounded p-2">
-                📈 Total Documents: {selectedData.document_count}
-                {selectedData.source_files && Object.keys(selectedData.source_files).length > 0 ? (
-                  <details className="mt-2">
-                    <summary className="cursor-pointer">📄 Files in Collection ({Object.keys(selectedData.source_files).length})</summary>
-                    <ul className="list-disc ml-6">
-                      {Object.entries(selectedData.source_files).sort().map(([file, cnt]) => (
-                        <li key={file}><b>{file}</b> — {cnt} chunk(s)</li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : (
-                  <div className="mt-2">No source file metadata found.</div>
-                )}
-              </div>
-            )}
-          </div>
 
-          <Uploader currentCollections={names} onUploaded={() => { mutate(); onRefresh(); }} />
+            <div className="badge">
+              Active: <span className="ml-1 font-mono">{selected}</span>
+            </div>
 
-          <div className="flex items-center gap-3">
-            <button className="px-3 py-1 border rounded" onClick={() => { mutate(); onRefresh(); }}>
-              🔄 Refresh Collections
-            </button>
-            <label className="text-sm flex items-center gap-2">
-              <input type="checkbox" checked={confirmDelete} onChange={e => setConfirmDelete(e.target.checked)} />
-              ⚠️ Confirm deletion of '{selected}'
+            <div className="flex items-center gap-2">
+              <button className="btn" onClick={refresh}><RefreshCw size={14} className="mr-2"/>Refresh</button>
+              <button className="btn bg-red-600 border-red-600 hover:bg-red-500" onClick={remove}>
+                <Trash2 size={14} className="mr-2"/>Delete
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted">No collections found.</p>
+        )}
+
+        <div className="border-t border-zinc-800/60 pt-4 space-y-3">
+          <h4 className="text-sm font-semibold">Upload Documents</h4>
+          <input
+            type="file"
+            multiple
+            onChange={(e) => setFiles(e.target.files)}
+            className="block text-sm file:mr-4 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-zinc-800
+                       file:text-white hover:file:bg-zinc-700"
+          />
+          <div className="flex items-center gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="radio" checked={uploadMode==="existing"} onChange={()=>setUploadMode("existing")}/> Existing
             </label>
-            <button
-              className="px-3 py-1 border rounded text-red-700"
-              onClick={async () => {
-                if (!selected) return;
-                if (!confirmDelete) { alert("Please confirm first."); return; }
-                try {
-                  await deleteCollection(selected);
-                  setConfirmDelete(false);
-                  await mutate();
-                  onSelect((data || []).filter(c => c.name !== selected)[0]?.name || null);
-                  onRefresh();
-                } catch (e:any) {
-                  alert(`Delete failed: ${e?.message || e}`);
-                }
-              }}
-            >
-              ⚠️ Delete Collection
-            </button>
+            <label className="flex items-center gap-2">
+              <input type="radio" checked={uploadMode==="new"} onChange={()=>setUploadMode("new")}/> Create new
+            </label>
           </div>
-        </>
-      ) : null}
+          {uploadMode==="existing" ? (
+            <select className="select" value={selected} onChange={(e)=>onActiveChange(e.target.value)}>
+              {names.map((n) => <option key={n}>{n}</option>)}
+            </select>
+          ) : (
+            <input className="input" value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="new-collection-name"/>
+          )}
+          <button className="btn btn-primary w-full" onClick={upload}>
+            <Upload size={14} className="mr-2"/>Upload Files
+          </button>
+          <p className="text-xs text-muted">Supported: PDF, DOCX, DOC, TXT, MD</p>
+        </div>
+      </div>
     </div>
   );
+}
+
+function sanitize(name: string) {
+  const clean = (name || "").trim().replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^_+|_+$/g, "");
+  return clean.length >= 3 ? clean : `${clean}_db`;
 }

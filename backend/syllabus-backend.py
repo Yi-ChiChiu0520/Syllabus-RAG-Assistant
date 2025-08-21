@@ -27,8 +27,8 @@ reranker_tokenizer = None
 reranker_model = None
 
 # Configuration
-CHROMA_PATH = "chroma_db"
-DATA_PATH = "data"
+CHROMA_PATH = "../chroma_db"
+DATA_PATH = "../data"
 
 
 # Pydantic models for API requests/responses
@@ -100,13 +100,15 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
-# Add CORS middleware
+# Add CORS middleware - THIS IS CRITICAL for frontend connections
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=["*"],  # In development - allow all origins
+    # For production, specify your frontend URL:
+    # allow_origins=["http://localhost:3000", "https://yourdomain.com"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 def get_openai_client():
